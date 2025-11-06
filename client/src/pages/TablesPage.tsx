@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import SQLTable from '../components/SQLTable';
+import '../styles/TablesPage.css';
 
 const TablesPage: React.FC = () => {
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
@@ -16,20 +17,12 @@ const TablesPage: React.FC = () => {
     <div className="tables-page">
       <h1>Database Tables</h1>
       
-      <div className="table-buttons" style={{ marginBottom: '20px' }}>
+      <div className="table-buttons">
         {tables.map((table) => (
           <button
             key={table.name}
             onClick={() => setSelectedTable(table.name)}
-            style={{
-              margin: '0 10px 10px 0',
-              padding: '8px 16px',
-              backgroundColor: selectedTable === table.name ? '#007bff' : '#f8f9fa',
-              color: selectedTable === table.name ? 'white' : 'black',
-              border: '1px solid #dee2e6',
-              borderRadius: '4px',
-              cursor: 'pointer',
-            }}
+            className={`table-button ${selectedTable === table.name ? 'active' : ''}`}
           >
             {table.name}
           </button>

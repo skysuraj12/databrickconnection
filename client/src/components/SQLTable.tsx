@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { runSQL } from '../api';
+import DownloadButton from './DownloadButton';
+import '../styles/SQLTable.css';
 
 interface SQLTableProps {
   query: string;                // Required SQL query
@@ -59,51 +61,41 @@ const SQLTable: React.FC<SQLTableProps> = ({
   const currentData = data.slice(startIndex, endIndex);
 
   return (
-    <div className="sql-table" style={{ margin: '20px 0' }}>
+    <div className="sql-table">
       {title && <h2>{title}</h2>}
       
       {!autoExecute && (
         <button 
           onClick={executeQuery}
-          style={{
-            padding: '8px 16px',
-            marginBottom: '16px',
-            backgroundColor: '#007bff',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer'
-          }}
+          className="execute-button"
+          disabled={loading}
         >
           Execute Query
         </button>
       )}
 
-      {loading && <div>Loading...</div>}
+      {loading && <div className="loading-message">Loading...</div>}
       
       {error && (
-        <div style={{ color: 'red', marginBottom: '16px' }}>
+        <div className="error-message">
           Error: {error}
         </div>
       )}
 
       {!loading && !error && data.length > 0 && (
         <>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ 
-              width: '100%', 
-              borderCollapse: 'collapse',
-              border: '1px solid #ddd'
-            }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+            <DownloadButton 
+              data={data}
+              filename={`${title || 'table-data'}-${new Date().toISOString().split('T')[0]}`}
+            />
+          </div>
+          <div className="table-wrapper">
+            <table className="data-table">
               <thead>
                 <tr>
                   {columns.map(column => (
-                    <th key={column.key} style={{
-                      padding: '12px',
-                      backgroundColor: '#f8f9fa',
-                      borderBottom: '2px solid #dee2e6',
-                      textAlign: 'left'
-                    }}>
+                    <th key={column.key}>
                       {column.label}
                     </th>
                   ))}
@@ -111,14 +103,9 @@ const SQLTable: React.FC<SQLTableProps> = ({
               </thead>
               <tbody>
                 {currentData.map((row, rowIndex) => (
-                  <tr key={rowIndex} style={{
-                    backgroundColor: rowIndex % 2 === 0 ? 'white' : '#f8f9fa'
-                  }}>
+                  <tr key={rowIndex}>
                     {columns.map(column => (
-                      <td key={column.key} style={{
-                        padding: '12px',
-                        borderBottom: '1px solid #dee2e6'
-                      }}>
+                      <td key={column.key}>
                         {String(row[column.key] ?? '')}
                       </td>
                     ))}
@@ -129,34 +116,21 @@ const SQLTable: React.FC<SQLTableProps> = ({
           </div>
 
           {totalPages > 1 && (
-            <div style={{ 
-              marginTop: '16px',
-              display: 'flex',
-              justifyContent: 'center',
-              gap: '8px'
-            }}>
+            <div className="pagination">
               <button
+                className="pagination-button"
                 onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
                 disabled={currentPage === 0}
-                style={{
-                  padding: '4px 8px',
-                  cursor: currentPage === 0 ? 'default' : 'pointer',
-                  opacity: currentPage === 0 ? 0.5 : 1
-                }}
               >
                 Previous
               </button>
-              <span style={{ padding: '4px 8px' }}>
+              <span className="pagination-info">
                 Page {currentPage + 1} of {totalPages}
               </span>
               <button
+                className="pagination-button"
                 onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
                 disabled={currentPage === totalPages - 1}
-                style={{
-                  padding: '4px 8px',
-                  cursor: currentPage === totalPages - 1 ? 'default' : 'pointer',
-                  opacity: currentPage === totalPages - 1 ? 0.5 : 1
-                }}
               >
                 Next
               </button>
