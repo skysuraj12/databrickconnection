@@ -1,7 +1,4 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
-
-name: Build and deploy Node.js app to Azure Web App - reactData
+name: Build and deploy React (Vite) app to Azure Web App - tabledata
 
 on:
   push:
@@ -12,57 +9,49 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read #This is required for actions/checkout
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Node.js version
-        uses: actions/setup-node@v3
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: '22.x'
+          node-version: '18.x'
+          cache: 'npm'
 
-      - name: npm install, build, and test
-        run: |
-          npm install
-          # Fix permission for Vite before building
-          chmod +x ./node_modules/.bin/vite
-          npm run build --if-present
-          npm run test --if-present
+      - name: Install root dependencies
+        run: npm ci
 
-      - name: Upload artifact for deployment job
+      - name: Install client dependencies (including dev)
+        run: npm ci --prefix client
+
+      - name: Build client
+        run: npm run build --prefix client
+
+      - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: node-app
-          path: .
+          name: react-build
+          path: client/dist
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
-    permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
 
     steps:
-      - name: Download artifact from build job
+      - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
-          name: node-app
-      
+          name: react-build
+
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_1BCC2A152FED4BADA2779961AC4EF4F3 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_907530A67718486D980C506FBA6131B3 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_2CA5838B81CF49B399AE66D3005B9232 }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: 'Deploy to Azure Web App'
-        id: deploy-to-webapp
+      - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'reactData'
-          slot-name: 'Production'
-          package: .
-
-          
+          app-name: tabledata
+          slot-name: Production
+          package: react-build
