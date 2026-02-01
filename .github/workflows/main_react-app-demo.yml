@@ -1,4 +1,4 @@
-name: Build and deploy - aaaaaa1
+name: Deploy aaaaaa1 (build + zip + deploy)
 
 on:
   push:
@@ -11,33 +11,41 @@ env:
   NODE_VERSION: "22.x"
 
 jobs:
-  build:
+  build_and_deploy:
     runs-on: ubuntu-latest
+    # If your secrets are in a GitHub Environment, set it here:
+    # environment: Production
+
+    permissions:
+      contents: read
+      id-token: write
+
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      - name: Install (root)
-        run: |
-          if [ -f package-lock.json ]; then
-            npm ci
-          else
-            npm install
-          fi
+      # ✅ No lockfile required
+      - name: Install deps (root)
+        run: npm install
 
       - name: Build
         run: npm run build --if-present
 
+      - name: Test (optional)
+        run: npm run test --if-present
+
+      # ✅ Remove node_modules so Kudu won't try to tar it and fail
       - name: Remove node_modules before packaging
         run: |
           rm -rf node_modules
           rm -rf server/node_modules
           rm -rf client/node_modules
 
-      - name: Create deploy.zip
+      - name: Create deploy.zip (exclude node_modules)
         run: |
           zip -r deploy.zip . \
             -x "**/node_modules/**" \
@@ -56,24 +64,7 @@ jobs:
             echo "✅ deploy.zip OK (no node_modules)"
           fi
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: deploy-zip
-          path: deploy.zip
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-    permissions:
-      id-token: write
-      contents: read
-
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: deploy-zip
-
-      # ✅ This will fail with a clear message if secrets aren't accessible
+      # ✅ Fail early if Azure secrets not accessible
       - name: Check Azure secrets exist (safe)
         run: |
           test -n "${{ secrets.AZUREAPPSERVICE_CLIENTID_B98BDA3D86B44C5D8D6C30C5741C2F95 }}" || (echo "Missing secret: AZUREAPPSERVICE_CLIENTID_..." && exit 1)
@@ -93,6 +84,7 @@ jobs:
         uses: azure/cli@v2
         with:
           inlineScript: |
+            set -e
             az webapp config appsettings set \
               --name "${{ env.APP_NAME }}" \
               --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
@@ -102,14 +94,14 @@ jobs:
                 DATABRICKS_TOKEN='${{ secrets.DATABRICKS_TOKEN }}' \
                 NODE_ENV='production'
 
-      - name: Deploy
+      - name: Deploy ZIP
         uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ env.APP_NAME }}
           slot-name: ${{ env.SLOT_NAME }}
           package: deploy.zip
 
-      - name: Restart
+      - name: Restart Web App
         uses: azure/cli@v2
         with:
           inlineScript: |
