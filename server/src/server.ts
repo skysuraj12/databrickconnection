@@ -1,5 +1,6 @@
 import express, { Request, Response } from "express";
 import cors from "cors";
+import path from "path";
 import { ENV } from "./env";
 import { runQuery } from "./databricks";
 
@@ -23,7 +24,8 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// ✅ Health endpoint
+// ---------------- API ROUTES ----------------
+
 app.get("/api/health", (_req: Request, res: Response) => res.json({ ok: true }));
 
 app.get("/api/employees", async (_req: Request, res: Response) => {
@@ -49,11 +51,22 @@ app.post("/api/query", async (req: Request, res: Response) => {
   }
 });
 
-// ✅ AZURE: must listen on process.env.PORT (Azure sets it to 8080)
+// ---------------- FRONTEND (VITE) ----------------
+// Serve React build from client/dist so the root URL shows your UI
+const clientDist = path.resolve(process.cwd(), "../client/dist");
+app.use(express.static(clientDist));
+
+// SPA fallback: any non-API route loads React index.html
+app.get("*", (req, res) => {
+  // If you want to block unknown API routes, keep APIs under /api only.
+  res.sendFile(path.join(clientDist, "index.html"));
+});
+
+// ---------------- LISTEN (AZURE PORT FIX) ----------------
 const PORT = Number(process.env.PORT || ENV.PORT || 8080);
 
 const server = app.listen(PORT, "0.0.0.0", () => {
-  console.log(`[BOOT] API listening on port ${PORT}`);
+  console.log(`[BOOT] Listening on port ${PORT}`);
 });
 
 server.on("error", (err) => {
