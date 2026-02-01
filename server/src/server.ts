@@ -1,17 +1,15 @@
-import express from 'express';
-import cors from 'cors';
-import routes from '../src/routes';
-import 'dotenv/config';
+import express, { Request, Response } from "express";
+import cors from "cors";
+import { ENV } from "./env";
+import { runQuery } from "./databricks";
 
-const PORT = Number(process.env.PORT || 8787);
-
-const app = express();
-app.use(cors());
-app.use(express.json());
-
-app.get('/health', (_req, res) => res.json({ ok: true }));
-app.use('/api', routes);
-
-app.listen(PORT, () => {
-  console.log(`API listening on http://localhost:${PORT}`);
+process.on("unhandledRejection", (e) => {
+  console.error("[UNHANDLED REJECTION]", e);
+  process.exit(1);
 });
+process.on("uncaughtException", (e) => {
+  console.error("[UNCAUGHT EXCEPTION]", e);
+  process.exit(1);
+});
+
+console.log("[BOO]()
