@@ -8,6 +8,7 @@ on:
 
 env:
   APP_NAME: aaaaaa1
+  SLOT_NAME: Production
   NODE_VERSION: "22.x"
 
 jobs:
@@ -50,7 +51,6 @@ jobs:
         with:
           name: node-app
 
-      # ✅ Fail early if secrets are missing
       - name: Check required secrets exist (safe)
         run: |
           test -n "${{ secrets.AZURE_RESOURCE_GROUP }}" || (echo "Missing secret: AZURE_RESOURCE_GROUP" && exit 1)
@@ -66,4 +66,68 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_B9949FD08D19436CB50D9B04E097880A }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_12CE1A0504D147579BE9283B5EC52346 }}
 
-      # ✅
+      # DEBUG: confirm which subscription Azure CLI is using
+      - name: Debug - show current subscription (safe)
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            set -e
+            az account show --query "{name:name, id:id, tenantId:tenantId}" -o json
+
+      # DEBUG: confirm the target webapp exists in that resource group + show hostname/location
+      - name: Debug - confirm target webapp exists (safe)
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            set -e
+            echo "RESOURCE_GROUP=${{ secrets.AZURE_RESOURCE_GROUP }}"
+            echo "APP_NAME=${{ env.APP_NAME }}"
+            az webapp show \
+              --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+              --name "${{ env.APP_NAME }}" \
+              --query "{name:name, state:state, defaultHostName:defaultHostName, location:location}" \
+              -o json
+
+      # Set App Service Application Settings for PRODUCTION (no --slot for production slot)
+      - name: Set Azure App Settings (Databricks) - Production
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            set -e
+            az webapp config appsettings set \
+              --name "${{ env.APP_NAME }}" \
+              --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+              --settings \
+                DATABRICKS_HOST='${{ secrets.DATABRICKS_HOST }}' \
+                DATABRICKS_HTTP_PATH='${{ secrets.DATABRICKS_HTTP_PATH }}' \
+                DATABRICKS_TOKEN='${{ secrets.DATABRICKS_TOKEN }}' \
+                NODE_ENV='production'
+
+      # Verify keys exist in Azure (SAFE: shows names only, not values)
+      - name: Verify Azure App Settings keys exist (safe)
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            set -e
+            az webapp config appsettings list \
+              --name "${{ env.APP_NAME }}" \
+              --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}" \
+              --query "[?name=='DATABRICKS_HOST' || name=='DATABRICKS_HTTP_PATH' || name=='DATABRICKS_TOKEN' || name=='NODE_ENV'].name" \
+              -o table
+
+      - name: Deploy to Azure Web App (Production)
+        id: deploy-to-webapp
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.APP_NAME }}
+          slot-name: ${{ env.SLOT_NAME }}
+          package: .
+
+      - name: Restart Web App
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            set -e
+            az webapp restart \
+              --name "${{ env.APP_NAME }}" \
+              --resource-group "${{ secrets.AZURE_RESOURCE_GROUP }}"
