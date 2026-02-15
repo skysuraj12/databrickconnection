@@ -23,9 +23,11 @@ jobs:
         with:
           node-version: '22.x'
 
-      - name: npm install, build, and test
+      - name: Clean install dependencies
+        run: npm ci
+
+      - name: npm build and test
         run: |
-          npm install
           npm run build --if-present
           npm run test --if-present
 
@@ -62,4 +64,3 @@ jobs:
           app-name: 'reactTable'
           slot-name: 'Production'
           package: .
-          
