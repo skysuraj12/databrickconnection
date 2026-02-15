@@ -23,26 +23,34 @@ jobs:
       - name: Install
         run: npm ci
 
+      # Safety fix for "vite: Permission denied"
+      - name: Fix Vite permission (safety)
+        run: chmod +x client/node_modules/.bin/vite || true
+
       - name: Build server
         run: npm run build -w server
 
       - name: Build client
         run: npm run build -w client
 
-      # OPTIONAL (recommended): copy client build into server so server can serve it
-      - name: Copy client dist into server (optional)
+      - name: Copy client dist into server
         run: |
           rm -rf server/public
           mkdir -p server/public
           cp -R client/dist/* server/public/
 
-      # Upload only what you actually need to run in Azure
+      # Create a clean deploy package
+      - name: Create deployment package
+        run: |
+          cd server
+          zip -r ../node-app.zip . -x "**/node_modules/**"
+          cd ..
+
       - name: Upload artifact for deployment
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: |
-            server
+          path: node-app.zip
           if-no-files-found: error
 
   deploy:
@@ -57,7 +65,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: node-app
-          path: server
 
       - name: Login to Azure
         uses: azure/login@v2
@@ -71,4 +78,4 @@ jobs:
         with:
           app-name: 'reactTable'
           slot-name: 'Production'
-          package: server
+          package: node-app.zip
