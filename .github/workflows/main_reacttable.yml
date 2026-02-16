@@ -17,7 +17,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Debug client/package.json
         run: |
@@ -28,7 +28,7 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Fix Vite permission
+      - name: Fix Vite permission (safe)
         run: |
           chmod -R a+x client/node_modules/.bin || true
 
@@ -43,6 +43,11 @@ jobs:
           rm -rf server/public
           mkdir -p server/public
           cp -R client/dist/* server/public/
+
+      - name: Remove any old node_modules tarballs
+        run: |
+          rm -f server/node_modules.tar.gz || true
+          rm -f server/node_modules.zip || true
 
       - name: Create deployment package
         run: |
@@ -80,6 +85,6 @@ jobs:
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'reactTable'
-          slot-name: 'Production'
+          app-name: "reactTable"
+          slot-name: "Production"
           package: node-app.zip
