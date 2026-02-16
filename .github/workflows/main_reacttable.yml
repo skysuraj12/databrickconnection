@@ -14,44 +14,36 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Node setup (no cache yet)
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      # Debug client package.json
       - name: Debug client/package.json
         run: |
           echo "---- client/package.json ----"
           sed -n '1,200p' client/package.json || true
           echo "------------------------------"
 
-      # Install from root
       - name: Install dependencies
         run: npm install
 
-      # Safety permission fix (harmless if not needed)
       - name: Fix Vite permission
         run: |
           chmod -R a+x client/node_modules/.bin || true
 
-      # Build server
       - name: Build server
         run: npm run build -w server
 
-      # Build client
       - name: Build client
         run: npm run build -w client
 
-      # Copy React build into server
       - name: Copy client dist into server
         run: |
           rm -rf server/public
           mkdir -p server/public
           cp -R client/dist/* server/public/
 
-      # Create deployment zip
       - name: Create deployment package
         run: |
           cd server
@@ -78,12 +70,12 @@ jobs:
         with:
           name: node-app
 
-      - name: Login to Azure
+      - name: Login to Azure (OIDC)
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_D759B756C49D4F16AD0AE997D8446869 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_0C8DF724D8BE4957891F408151F2A058 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_C8FF89C49BB349E8AA35629CD39A4EFD }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
