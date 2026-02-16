@@ -14,53 +14,50 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # ✅ Node setup (no cache because no root lock file yet)
+      # Node setup (no cache yet)
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      # 🔍 DEBUG — shows if package.json is broken
+      # Debug client package.json
       - name: Debug client/package.json
         run: |
-          echo "---- client/package.json (first 200 lines) ----"
+          echo "---- client/package.json ----"
           sed -n '1,200p' client/package.json || true
-          echo "---- end ----"
+          echo "------------------------------"
 
-      # ✅ Install dependencies (NOT npm ci)
+      # Install from root
       - name: Install dependencies
         run: npm install
 
-      # ✅ HARD FIX for vite permission issue
+      # Safety permission fix (harmless if not needed)
       - name: Fix Vite permission
         run: |
           chmod -R a+x client/node_modules/.bin || true
-          chmod +x client/node_modules/.bin/vite || true
-          ls -la client/node_modules/.bin | grep vite || true
 
-      # ✅ Build server
+      # Build server
       - name: Build server
         run: npm run build -w server
 
-      # ✅ Build client
+      # Build client
       - name: Build client
         run: npm run build -w client
 
-      # ✅ Copy React build into server
+      # Copy React build into server
       - name: Copy client dist into server
         run: |
           rm -rf server/public
           mkdir -p server/public
           cp -R client/dist/* server/public/
 
-      # ✅ Create deployment zip
+      # Create deployment zip
       - name: Create deployment package
         run: |
           cd server
           zip -r ../node-app.zip . -x "**/node_modules/**"
           cd ..
 
-      # ✅ Upload artifact
       - name: Upload artifact for deployment
         uses: actions/upload-artifact@v4
         with:
