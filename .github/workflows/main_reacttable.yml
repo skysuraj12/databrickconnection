@@ -14,42 +14,53 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # No npm cache because you don't have a root package-lock.json yet
+      # ✅ Node setup (no cache because no root lock file yet)
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      # Use npm install (NOT npm ci) since package-lock.json is missing
+      # 🔍 DEBUG — shows if package.json is broken
+      - name: Debug client/package.json
+        run: |
+          echo "---- client/package.json (first 200 lines) ----"
+          sed -n '1,200p' client/package.json || true
+          echo "---- end ----"
+
+      # ✅ Install dependencies (NOT npm ci)
       - name: Install dependencies
         run: npm install
 
-      # Hard fix for "vite: Permission denied" in Linux runners
+      # ✅ HARD FIX for vite permission issue
       - name: Fix Vite permission
         run: |
           chmod -R a+x client/node_modules/.bin || true
           chmod +x client/node_modules/.bin/vite || true
+          ls -la client/node_modules/.bin | grep vite || true
 
+      # ✅ Build server
       - name: Build server
         run: npm run build -w server
 
+      # ✅ Build client
       - name: Build client
         run: npm run build -w client
 
-      # Copy React build into server so Express can serve it
+      # ✅ Copy React build into server
       - name: Copy client dist into server
         run: |
           rm -rf server/public
           mkdir -p server/public
           cp -R client/dist/* server/public/
 
-      # Create a clean deployment zip from server folder
+      # ✅ Create deployment zip
       - name: Create deployment package
         run: |
           cd server
           zip -r ../node-app.zip . -x "**/node_modules/**"
           cd ..
 
+      # ✅ Upload artifact
       - name: Upload artifact for deployment
         uses: actions/upload-artifact@v4
         with:
@@ -82,4 +93,4 @@ jobs:
         with:
           app-name: 'reactTable'
           slot-name: 'Production'
-          package: node-app.z
+          package: node-app.zip
