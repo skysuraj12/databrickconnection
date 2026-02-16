@@ -1,26 +1,26 @@
-import express from "express";
-import cors from "cors";
-import routes from "./routes";
-import "dotenv/config";
-import path from "path";
+import { ENV } from "./env";
+import { DBSQLClient } from "@databricks/sql";
 
-const app = express();
+export async function runQuery(sql: string) {
+  const client = new DBSQLClient();
 
-app.use(cors());
-app.use(express.json());
+  await client.connect({
+    host: ENV.DATABRICKS_HOST,
+    path: ENV.DATABRICKS_HTTP_PATH,
+    token: ENV.DATABRICKS_TOKEN,
+  });
 
-// API routes first
-app.get("/health", (_req, res) => res.json({ ok: true }));
-app.use("/api", routes);
+  const session = await client.openSession();
+  try {
+    const query = await session.executeStatement(sql);
 
-// Serve React build (GitHub Action copies client/dist -> server/public)
-const publicDir = path.join(process.cwd(), "public");
-app.use(express.static(publicDir));
+    // Collect all rows
+    const result = await query.fetchAll();
+    await query.close();
 
-// SPA fallback (React Router)
-app.get("*", (_req, res) => {
-  res.sendFile(path.join(publicDir, "index.html"));
-});
-
-const port = Number(process.env.PORT) || 8080;
-app.listen(port, () => console.log(`API listening on port ${port}`));
+    return result;
+  } finally {
+    await session.close();
+    await client.close();
+  }
+}
