@@ -1,0 +1,17 @@
+services:
+  server:
+    build:
+      context: ./server
+      target: runtime
+    env_file:
+      - ./server/.env
+    ports:
+      - "8080:8080"
+
+  client:
+    build:
+      context: ./client
+    ports:
+      - "80:80"
+    depends_on:
+      - server
